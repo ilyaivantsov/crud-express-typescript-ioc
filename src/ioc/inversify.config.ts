@@ -7,6 +7,7 @@ import { ErrorMiddleware } from '../middlewares/error.middleware';
 import { HeroService } from '../services/hero.service';
 import { AppConfig } from '../config/app.config';
 import { AppLogger } from '../loggers/app.logger';
+import { FileUploadService } from '../services/file-upload.service';
 
 export class Container {
     private _container: InversifyContainer = new InversifyContainer();
@@ -32,7 +33,6 @@ export class Container {
     }
 
     private register(): void {
-        // this._container.load(this.getRepositoriesModule());
         this._container.load(this.getLoggersModule());
         this._container.load(this.getMiddlewaresModule());
         this._container.load(this.getGeneralModule());
@@ -51,14 +51,9 @@ export class Container {
     private getServicesModule(): ContainerModule {
         return new ContainerModule((bind: interfaces.Bind) => {
             bind<HeroService>(HeroService).toSelf();
+            bind<FileUploadService>(FileUploadService).toSelf();
         });
     }
-
-    // private getRepositoriesModule(): ContainerModule {
-    //     return new ContainerModule((bind: interfaces.Bind) => {
-    //         bind<HeroRepository>(HeroRepository).toConstantValue(new HeroRepository(PartnerModel));
-    //     });
-    // }
 
     private getLoggersModule(): ContainerModule {
         return new ContainerModule((bind: interfaces.Bind) => {
@@ -74,7 +69,7 @@ export class Container {
 
     private getGeneralModule(): ContainerModule {
         return new ContainerModule((bind: interfaces.Bind) => {
-            bind<AppConfig>(AppConfig).toSelf().inSingletonScope(),
+            bind<AppConfig>(AppConfig).toSelf().inSingletonScope();
             bind<SwaggerConfig>(SwaggerConfig).toSelf();
         });
     }

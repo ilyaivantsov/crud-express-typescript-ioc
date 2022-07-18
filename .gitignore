@@ -1,5 +1,6 @@
-# Local db
+# Locals
 db/
+uploads/
 
 # Logs
 logs

@@ -6,26 +6,117 @@ import { HeroDto } from '../dtos/hero/hero.dto';
 import { HeroService } from '../services/hero.service';
 import { ValidationError } from '../errors/validation.error';
 import { HeroUpdateDto } from '../dtos/hero/hero.update.dto';
+import { FileUploadService } from '../services/file-upload.service';
+import * as multer from 'multer';
+import { AppLogger } from '../loggers/app.logger';
 
 @injectable()
 export class HeroController extends BaseController {
+    @inject(AppLogger) private readonly appLogger: AppLogger;
     @inject(HeroService) private readonly heroService: HeroService;
+    @inject(FileUploadService) private readonly fileUploadService: FileUploadService;
 
     constructor() {
-        super('/hero');
+        super('/superhero');
     }
 
     public initializeRoutes(): void {
         this.router
             .post(`${this.path}`, this.create.bind(this))
-            .get(`${this.path}`, this.getAll.bind(this))
-            .get(`${this.path}/:name`, this.getOne.bind(this))
-            .put(`${this.path}/:name`, this.update.bind(this))
+            .get(`${this.path}/getHeroStats`, this.getAll.bind(this))
+            .post(`${this.path}/uploadHeroImage/:name`, this.uploadAvatar.bind(this))
+            .get(`${this.path}/getHeroImage/:name`, this.getFile.bind(this))
+            .get(`${this.path}/getHeroStats/:name`, this.getOne.bind(this))
+            .put(`${this.path}/setHeroStats/:name`, this.update.bind(this))
     }
 
     /**
      * @swagger
-     * /hero/:
+     * /superhero/getHeroImage/{name}:
+     *    get:
+     *      tags:
+     *        - Hero
+     *      description: Get Hero Image by name
+     *      produces:
+     *        - image/png
+     *        - image/gif
+     *        - image/jpeg
+     *      parameters:
+     *        - in: path
+     *          name: name
+     *          required: true
+     *          description: String of the hero name.
+     *          schema:
+     *            type: string
+     *      responses:
+     *        201:
+     *          description: OK
+     */
+    private getFile(request: Request, response: Response) {
+        const name = request.params.name;
+        if (!name)
+            throw new ValidationError(`name is required`);
+        if (this.fileUploadService.fileExist(name)) {
+            this.fileUploadService.sendFile(request, response, name);
+            return;
+        } else {
+            throw new ValidationError(`file doesn't exist`);
+        }
+    }
+
+    /**
+     * @swagger
+     * /superhero/uploadHeroImage/{name}:
+     *    post:
+     *      tags:
+     *        - Hero
+     *      description: Hero upload Image
+     *      produces:
+     *        - multipart/form-data
+     *      parameters:
+     *        - in: path
+     *          name: name
+     *          required: true
+     *          description: String of the hero name.
+     *          schema:
+     *            type: string        
+     *        - in: formData
+     *          name: avatar
+     *          type: file
+     *          description: The file to upload.
+     *      responses:
+     *        201:
+     *          description: Hero
+     *        400:
+     *          description: Bad request
+     */
+    private uploadAvatar(request: Request, response: Response) {
+        const name = request.params.name;
+        if (!name)
+            throw new ValidationError(`name is required`);
+        this.heroService.findOne(name).then(
+            user => {
+                if (!user)
+                    throw new ValidationError(`${name} doesn't exist`);
+                this.fileUploadService.upload(request, response, function (err) {
+                    if (err instanceof multer.MulterError) {
+                        response.status(400).send(err.message);
+                    } else if (err) {
+                        // An unknown error occurred when uploading.
+                    }
+
+                    response.status(201).send(request.body);
+                })
+            },
+            err => this.appLogger.error
+        )
+    }
+
+
+
+    /**
+     * @swagger
+     * /superhero/:
      *    post:
      *      tags:
      *        - Hero
@@ -54,7 +145,7 @@ export class HeroController extends BaseController {
 
     /**
      * @swagger
-     * /hero/{name}:
+     * /superhero/setHeroStats/{name}:
      *    put:
      *      tags:
      *        - Hero
@@ -96,7 +187,7 @@ export class HeroController extends BaseController {
 
     /**
      * @swagger
-     * /hero/:
+     * /superhero/getHeroStats:
      *   get:
      *     tags:
      *       - Hero
@@ -112,7 +203,7 @@ export class HeroController extends BaseController {
 
     /**
      * @swagger
-     * /hero/{name}:
+     * /superhero/getHeroStats/{name}:
      *   get:
      *     tags:
      *       - Hero
